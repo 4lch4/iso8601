@@ -19,10 +19,29 @@ var (
 	week = regexp.MustCompile(`P((?P<week>\d+)W)`)
 )
 
+type Duration struct {
+	Years   int
+	Months  int
+	Weeks   int
+	Days    int
+	Hours   int
+	Minutes int
+	Seconds int
+}
+
 // adapted from https://github.com/BrianHicks/finch/duration
-func ParseDuration(value string) (time.Duration, error) {
+func ParseDuration(value string) (time.Duration, *Duration, error) {
 	var match []string
 	var regex *regexp.Regexp
+	result := Duration{
+		Years:   0,
+		Months:  0,
+		Weeks:   0,
+		Days:    0,
+		Hours:   0,
+		Minutes: 0,
+		Seconds: 0,
+	}
 
 	if week.MatchString(value) {
 		match = week.FindStringSubmatch(value)
@@ -31,7 +50,7 @@ func ParseDuration(value string) (time.Duration, error) {
 		match = full.FindStringSubmatch(value)
 		regex = full
 	} else {
-		return time.Duration(0), ErrBadFormat
+		return time.Duration(0), nil, ErrBadFormat
 	}
 
 	d := time.Duration(0)
@@ -47,29 +66,36 @@ func ParseDuration(value string) (time.Duration, error) {
 
 		value, err := strconv.Atoi(part)
 		if err != nil {
-			return time.Duration(0), err
+			return time.Duration(0), nil, err
 		}
 		switch name {
 		case "year":
+			result.Years = value
 			d += year * time.Duration(value)
 		case "month":
+			result.Months = value
 			if value != 0 {
-				return time.Duration(0), ErrNoMonth
+				return time.Duration(0), nil, ErrNoMonth
 			}
 		case "week":
+			result.Weeks = value
 			d += week * time.Duration(value)
 		case "day":
+			result.Days = value
 			d += day * time.Duration(value)
 		case "hour":
+			result.Hours = value
 			d += time.Hour * time.Duration(value)
 		case "minute":
+			result.Minutes = value
 			d += time.Minute * time.Duration(value)
 		case "second":
+			result.Seconds = value
 			d += time.Second * time.Duration(value)
 		}
 	}
 
-	return d, nil
+	return d, &result, nil
 }
 
 func FormatDuration(duration time.Duration) string {
